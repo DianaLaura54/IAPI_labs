@@ -1,0 +1,49 @@
+% Inițializare Proiect (Asigură-te că TRP_Par este încărcat)
+if isempty(matlab.project.rootProject)
+    openProject('Triplex_Pump.prj');
+end
+
+N = 20; 
+features = zeros(N, 2); 
+labels = cell(N, 1);   
+
+fprintf('Începere generare date pentru %d simulări...\n', N);
+
+for k = 1:N
+    % Alegem aleatoriu modul
+    if rand > 0.5
+        faultMode = 'normal'; 
+    else
+        faultMode = 'seal_leakage'; 
+    end
+    assignin('base','faultMode', faultMode); 
+
+    % Rulăm simularea forțând logarea semnalelor
+    simOut = sim('sm_pump_triplex', 'ReturnWorkspaceOutputs','on', 'SignalLogging', 'on'); 
+
+    % Verificăm dacă logsout a fost generat
+    if isprop(simOut, 'logsout') && ~isempty(simOut.logsout)
+        % Extragem semnalele
+        p_out = simOut.logsout.get(pIn_sim').Values.Data; 
+        i_mot = simOut.logsout.get('pOut_sim').Values.Data; 
+
+        % Calcul indicatori
+        features(k, 1) = mean(p_out); 
+        features(k, 2) = rms(i_mot); 
+        labels{k} = faultMode; 
+        
+        fprintf('Simularea %d/%d: Mod %s gata.\n', k, N, faultMode);
+    else
+        error('Eroare: logsout nu a fost găsit. Mergi în Simulink și dă click dreapta pe firele de presiune/curent -> Log Selected Signals.');
+    end
+end
+
+% Salvarea bazei de date
+save('pump_data_lab.mat', 'features', 'labels'); 
+fprintf('Succes! Fișierul pump_data_lab.mat a fost creat!\n');
+figure;
+gscatter(features(:,1), features(:,2), labels);
+xlabel('Presiune Medie (Pa)');
+ylabel('RMS Curent (A)');
+title('Distribuția Datelor: Normal vs Scurgere');
+grid on;

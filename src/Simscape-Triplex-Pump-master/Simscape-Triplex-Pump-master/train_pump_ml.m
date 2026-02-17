@@ -1,0 +1,14 @@
+load('pump_data_lab.mat');
+X = features;
+Y = categorical(labels);
+idx = randperm(size(X,1));
+nTrain = round(0.7*length(idx));
+Xtrain = X(idx(1:nTrain),:);
+Ytrain = Y(idx(1:nTrain));
+Xtest = X(idx(nTrain+1:end),:);
+Ytest = Y(idx(nTrain+1:end));
+model = fitctree(Xtrain,Ytrain);
+pred = predict(model,Xtest);
+acc = mean(pred==Ytest)*100;
+disp(['Acuratete: ',num2str(acc),' %']);
+save('pump_ml_model.mat','model');

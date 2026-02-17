@@ -1,0 +1,45 @@
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+
+const char* ssid = "Numele_Tau_WiFi";
+const char* password = "Parola_Ta_WiFi";
+const char* mqtt_server = "broker.emqx.io";
+const char* topic = "abb/variables"; // Sau "xarm/variables"
+
+WiFiClient net;
+PubSubClient client(net);
+
+void callback(char* topic, byte* payload, unsigned int length) {
+    StaticJsonDocument<200> doc;
+    deserializeJson(doc, payload, length);
+
+    String mod = doc["variable1"]; // "a" (1s) sau "r" (2s)
+    int repetari = doc["variable2"]; // Număr de clipiri
+
+    Serial.printf("Comandă: %s de %d ori\n", mod.c_str(), repetari);
+    
+    int interval = (mod == "a") ? 1000 : 2000;
+
+    for(int i = 0; i < repetari; i++) {
+        digitalWrite(LED_BUILTIN, LOW); // Aprins (activ pe LOW)
+        delay(interval);
+        digitalWrite(LED_BUILTIN, HIGH); // Stins
+        delay(interval);
+    }
+}
+
+void setup() {
+    pinMode(LED_BUILTIN, OUTPUT);
+    WiFi.begin(ssid, password);
+    client.setServer(mqtt_server, 1883);
+    client.setCallback(callback);
+}
+
+void loop() {
+    if (!client.connected()) {
+        client.connect("ESP8266Client");
+        client.subscribe(topic);
+    }
+    client.loop();
+}

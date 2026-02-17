@@ -1,0 +1,44 @@
+import socket
+import sys
+import random
+import paho.mqtt.client as mqtt
+
+# Setări MQTT și Robot
+broker = 'broker.emqx.io'
+port = 1883
+topic = "button_topic/mqtt"
+robot_ip = "192.168.125.1"
+robot_port = 1500
+
+def on_message(client, userdata, msg):
+    comandă = msg.payload.decode()
+    print(f"Mesaj MQTT primit: {comandă}")
+    
+    # Conectare la robot prin TCP Socket
+    try:
+        priza_ethernet = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        priza_ethernet.connect((robot_ip, robot_port))
+        
+        # Traducere mesaj MQTT în comandă Robot
+        if comandă == "1":
+            msg_robot = b"aplicatia_1"
+        elif comandă == "2":
+            msg_robot = b"aplicatia_2"
+        else:
+            msg_robot = b"aplica" # Comandă pentru parcare
+
+        priza_ethernet.sendall(msg_robot)
+        raspuns = priza_ethernet.recv(1024)
+        print(f"Robotul a răspuns: {raspuns.decode()}")
+        priza_ethernet.close()
+    except Exception as e:
+        print(f"Eroare la conectarea cu robotul: {e}")
+
+# Configurare Client MQTT
+client = mqtt.Client(f'python-mqtt-{random.randint(0, 100)}')
+client.on_message = on_message
+client.connect(broker, port)
+client.subscribe(topic)
+
+print("Aștept comenzi MQTT pentru robot...")
+client.loop_forever()
